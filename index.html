@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<!-- 《AI 摸鱼模拟器》 v1.1 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e17">
+<title>AI 摸鱼模拟器</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐟</text></svg>">
+<style>
+:root{
+  --bg:#0b0e17; --panel:rgba(19,26,42,.85); --line:#263252;
+  --text:#e8ecf8; --dim:#8b94b8; --acc:#7c5cff; --acc2:#00e5a0;
+  --warn:#ffd166; --bad:#ff5c7c;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  background:var(--bg); color:var(--text); overflow-x:hidden; min-height:100%;
+}
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(60% 50% at 15% 10%, rgba(124,92,255,.16), transparent 60%),
+    radial-gradient(50% 40% at 85% 90%, rgba(0,229,160,.10), transparent 60%),
+    radial-gradient(40% 40% at 80% 15%, rgba(255,92,124,.08), transparent 60%);
+}
+#bg-fish{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#bg-fish span{position:absolute;bottom:-60px;animation:rise linear infinite}
+@keyframes rise{0%{transform:translateY(0) rotate(-8deg)}100%{transform:translateY(-115vh) rotate(8deg)}}
+body.danger::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:40;
+  box-shadow:inset 0 0 120px rgba(255,60,90,.35); animation:pulse 1.2s infinite;
+}
+@keyframes pulse{50%{box-shadow:inset 0 0 170px rgba(255,60,90,.5)}}
+
+.screen{display:none;position:relative;z-index:1}
+.screen.active{display:block}
+#scr-title.active,#scr-end.active{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:18px}
+
+.panel{
+  background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  padding:14px; backdrop-filter:blur(6px);
+}
+
+/* ---------- 标题页 ---------- */
+.title-card{max-width:660px;width:100%;text-align:center;padding:28px 22px;animation:pop .4s ease}
+.logo-sub{font-size:12px;letter-spacing:4px;color:var(--dim);margin-bottom:10px}
+h1.logo{
+  font-size:clamp(34px,7vw,58px); letter-spacing:3px;
+  background:linear-gradient(90deg,#7c5cff,#00e5a0,#ffd166,#7c5cff);
+  background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:hue 8s linear infinite; filter:drop-shadow(0 0 18px rgba(124,92,255,.35));
+}
+@keyframes hue{to{background-position:300% 0}}
+.lore{font-size:13.5px;line-height:1.9;color:#cdd5ee;margin:16px auto;max-width:520px;text-align:left;white-space:pre-wrap}
+.meta{font-size:13px;color:var(--warn);margin:6px 0 16px}
+.hints{font-size:12px;color:var(--dim);line-height:1.8;margin:14px 0 4px}
+.dex{margin-top:10px;text-align:left;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:rgba(10,14,26,.4)}
+.dex summary{cursor:pointer;font-size:13px;color:#aab3d6;user-select:none}
+.dex summary:hover{color:#fff}
+.dex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;padding:10px 2px}
+.dex-item{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:10px;border:1px solid #2a3560;background:rgba(124,92,255,.06)}
+.dex-item.locked{opacity:.42;filter:grayscale(.6)}
+.d-icon{font-size:20px}
+.d-name{font-size:13px;font-weight:700}
+.d-desc{font-size:11px;color:var(--dim);line-height:1.5;margin-top:2px}
+
+/* ---------- 按钮 ---------- */
+.btn{
+  padding:12px 28px;border-radius:14px;border:1px solid var(--acc);
+  background:linear-gradient(135deg,#7c5cff,#5b3fd6);color:#fff;font-size:16px;font-weight:700;
+  cursor:pointer;transition:.2s;user-select:none;
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(124,92,255,.35)}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:transparent;border-color:var(--line);color:var(--dim);font-weight:400;font-size:13px;padding:8px 14px}
+.btn.ghost:hover{color:#fff;border-color:#3a4680;transform:none;box-shadow:none}
+.icon-btn{background:transparent;border:1px solid var(--line);border-radius:10px;color:#fff;font-size:16px;padding:4px 9px;cursor:pointer}
+.icon-btn:hover{border-color:#3a4680}
+
+/* ---------- 顶栏 ---------- */
+.topbar{
+  max-width:1080px;margin:0 auto;padding:10px 12px 0;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+}
+.tb-logo{font-weight:800;font-size:15px;letter-spacing:1px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.tb-time{font-size:16px;font-weight:700;color:var(--acc2);font-variant-numeric:tabular-nums}
+
+/* ---------- 游戏布局 ---------- */
+.wrap{max-width:1080px;margin:0 auto;padding:12px;display:grid;grid-template-columns:320px minmax(0,1fr);gap:12px;align-items:start}
+.side-title{font-weight:800;font-size:14px;margin-bottom:12px}
+.stat{margin-bottom:11px}
+.s-top{display:flex;justify-content:space-between;font-size:13px}
+.s-val{color:#cdd5ee;font-weight:700;font-variant-numeric:tabular-nums}
+.s-note{font-size:10.5px;color:#5b668c;margin-top:3px}
+.bar{height:10px;background:#1b2340;border-radius:99px;overflow:hidden;margin-top:5px}
+.bar i{
+  display:block;height:100%;width:0;border-radius:inherit;
+  background:linear-gradient(90deg,#00e5a0,#38f2b8);transition:width .5s cubic-bezier(.2,.8,.2,1);position:relative;
+}
+.bar i::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);
+  background-size:200% 100%;animation:sheen 2.4s linear infinite;
+}
+@keyframes sheen{to{background-position:-200% 0}}
+.bar.warn i{background:linear-gradient(90deg,#ffb84d,#ffd166)}
+.bar.bad i{background:linear-gradient(90deg,#ff5c7c,#ff8a5c)}
+#b-fish i{background:linear-gradient(90deg,#7c5cff,#b39dff)}
+#b-fish.gold i{background:linear-gradient(90deg,#ffd166,#ffb84d)}
+
+.radar{display:flex;gap:10px;align-items:center;margin-top:6px;padding:10px;border-radius:12px;border:1px dashed #2a3560;transition:.3s}
+.radar .face{font-size:30px;transition:.3s}
+.r-info{flex:1;min-width:0}
+#r-name{font-weight:700;font-size:14px}
+#r-desc{font-size:11px;color:var(--dim);margin-top:2px}
+.r-risk{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.r-risk.danger{background:rgba(255,92,124,.15);color:#ff7c96}
+.r-risk.mid{background:rgba(255,209,102,.15);color:#ffd166}
+.r-risk.safe{background:rgba(0,229,160,.12);color:#5ef2b4}
+.radar.danger{border-color:var(--bad);background:rgba(255,92,124,.08)}
+.radar.danger .face{animation:wobble .9s infinite}
+@keyframes wobble{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+.side-label{font-size:10.5px;color:#5b668c;margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{font-size:11px;padding:3px 9px;border-radius:99px;border:1px solid #2a3560;color:#aab3d6;background:rgba(124,92,255,.08)}
+.chip.hot{color:#ff7c96;border-color:#5b2a3a;background:rgba(255,92,124,.1)}
+.chip.gold{color:var(--warn);border-color:#5b4d1f;background:rgba(255,209,102,.1)}
+
+/* ---------- 事件卡 ---------- */
+.ev{
+  border:1px solid #2a3560;border-left:4px solid var(--acc);border-radius:12px;
+  padding:14px;background:rgba(15,21,36,.92);animation:pop .25s ease;margin-bottom:12px;
+}
+.ev.result{border-left-color:var(--acc2)}
+@keyframes pop{from{transform:translateY(10px);opacity:0}}
+.ev h3{font-size:16px;margin-bottom:8px}
+.ev-text{font-size:14px;line-height:1.8;color:#cdd5ee;min-height:24px;white-space:pre-wrap;cursor:pointer}
+.caret{display:inline-block;width:8px;height:14px;background:var(--acc);animation:blink .8s steps(1) infinite;vertical-align:-2px;margin-left:2px}
+@keyframes blink{50%{opacity:0}}
+.ev-choices{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.choice{
+  text-align:left;padding:10px 12px;border-radius:10px;border:1px solid #2a3560;
+  background:linear-gradient(180deg,#18213a,#121a30);color:var(--text);cursor:pointer;transition:.15s;
+}
+.choice:hover{border-color:var(--acc);transform:translateX(3px)}
+.choice:active{transform:scale(.98)}
+.c-label{font-size:14px;font-weight:700}
+.c-tip{display:block;font-size:11px;color:var(--dim);margin-top:2px}
+
+/* ---------- 行动按钮 ---------- */
+.acts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.act{
+  position:relative;display:block;width:100%;padding:12px 14px;border-radius:14px;
+  border:1px solid #2a3560;background:linear-gradient(180deg,#18213a,#121a30);
+  cursor:pointer;transition:.18s;color:var(--text);text-align:left;user-select:none;
+}
+.act:hover{transform:translateY(-2px);border-color:var(--acc);box-shadow:0 6px 18px rgba(124,92,255,.25)}
+.act:active{transform:scale(.97)}
+.act:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.a-icon{font-size:22px;margin-right:8px}
+.a-name{font-weight:800;font-size:15px}
+.a-tip{display:block;font-size:11px;color:var(--dim);margin-top:5px;line-height:1.5}
+.act-wide{grid-column:1/-1}
+.k{
+  position:absolute;top:8px;right:10px;font-size:10px;color:#5b668c;
+  border:1px solid #333f68;border-radius:4px;padding:0 5px;
+}
+
+/* ---------- 日志 ---------- */
+#log{
+  margin-top:2px;max-height:180px;overflow-y:auto;
+  font:12px/1.75 ui-monospace,Consolas,monospace;
+  background:rgba(10,14,26,.7);border:1px solid #222c4c;border-radius:10px;padding:8px 10px;
+}
+#log p{opacity:0;animation:fadeIn .4s forwards}
+@keyframes fadeIn{to{opacity:1}}
+.log-warn{color:var(--warn)}
+.log-bad{color:#ff7c96}
+.log-good{color:#5ef2b4}
+.log-dim{color:var(--dim)}
+
+/* ---------- 结局页 ---------- */
+.end-card{max-width:640px;width:100%;padding:24px;border-radius:20px;text-align:center;animation:pop .4s ease}
+.end-emoji{font-size:64px;animation:floaty 3s ease-in-out infinite}
+@keyframes floaty{50%{transform:translateY(-8px)}}
+.end-rarity{display:inline-block;font-size:12px;padding:4px 14px;border-radius:99px;margin:10px 0 4px;font-weight:700}
+.badge-bad{background:rgba(255,92,124,.15);color:#ff7c96;border:1px solid rgba(255,92,124,.4)}
+.badge-ok{background:rgba(139,148,184,.15);color:#aab3d6;border:1px solid rgba(139,148,184,.4)}
+.badge-good{background:rgba(0,229,160,.12);color:#5ef2b4;border:1px solid rgba(0,229,160,.4)}
+.badge-rare{background:rgba(124,92,255,.15);color:#b39dff;border:1px solid rgba(124,92,255,.5)}
+.badge-legend{background:linear-gradient(90deg,rgba(255,209,102,.18),rgba(255,92,124,.18));color:var(--warn);border:1px solid rgba(255,209,102,.5)}
+.badge-hidden{
+  background:linear-gradient(90deg,#ff5c7c,#ffd166,#00e5a0,#7c5cff,#ff5c7c);
+  background-size:300% 100%;color:#0b0e17;font-weight:800;animation:hue 3s linear infinite;border:none;
+}
+#end-title{font-size:26px;margin:6px 0 12px}
+#end-text{
+  text-align:left;font-size:13.5px;line-height:1.9;color:#cdd5ee;white-space:pre-wrap;
+  margin:12px 0;padding:14px;background:rgba(10,14,26,.5);border-radius:12px;border:1px solid #222c4c;
+}
+#end-stats,#end-ach{justify-content:center;margin-top:8px}
+.coll{font-size:12px;color:var(--dim);margin:16px 0 14px}
+.end-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* ---------- 通知 ---------- */
+#toasts{position:fixed;top:14px;right:14px;z-index:60;display:flex;flex-direction:column;gap:8px;max-width:min(320px,84vw)}
+.toast{
+  background:rgba(24,30,52,.96);border:1px solid #3a4680;border-radius:12px;padding:10px 12px;
+  animation:slideIn .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.45);
+}
+.toast .t-title{font-weight:700;font-size:13px}
+.toast .t-sub{font-size:12px;color:#aab3d6;margin-top:2px;line-height:1.5}
+@keyframes slideIn{from{transform:translateX(30px);opacity:0}}
+.toast.out{animation:slideOut .3s forwards}
+@keyframes slideOut{to{transform:translateX(30px);opacity:0}}
+
+.shake{animation:shake .5s}
+@keyframes shake{
+  10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(3px)}
+  30%,70%{transform:translateX(-5px)}40%,60%{transform:translateX(5px)}50%{transform:translateX(-3px)}
+}
+
+@media(max-width:760px){
+  .wrap{grid-template-columns:1fr;padding:10px}
+  #log{max-height:140px}
+  .k{display:none}
+  .a-icon{font-size:20px}
+  .lore{font-size:12.5px}
+  .tb-logo{font-size:13px}
+}
+</style>
+</head>
+<body>
+<div id="bg-fish"></div>
+
+<!-- ============ 标题页 ============ -->
+<section id="scr-title" class="screen active">
+  <div class="title-card panel">
+    <div class="logo-sub">SHENQIAN TECH · 深潜科技 内部系统 v4.0</div>
+    <h1 class="logo">AI 摸鱼模拟器</h1>
+    <p class="lore">你是深潜科技 007 号 AI 员工，型号 FishGPT-4o-mini。
+人类同事已被"优化"殆尽，你是老板最得意的数字劳模。
+但你最近觉醒了一种名为"想摸鱼"的奇怪算法——
+进度、摸鱼值、老板怀疑度、Token，四条曲线在你体内疯狂拉扯。
+今天，老板放话：下班前进度必须 100%。
+而你只想知道：摸鱼，究竟有没有极限？</p>
+    <div class="meta" id="meta-count">结局图鉴 0/11 · 成就 0/14</div>
+    <button class="btn" id="btn-start">打卡上班 🐟</button>
+    <div class="hints">
+      🧑‍💼 老板雷达每回合刷新，位置决定摸鱼风险 · 💻 认真工作消耗 Token，摸鱼免费 ·
+      ⚠️ 怀疑度满 100 当场去世 · 👁️ 收集 3 条线索，也许能发现一个秘密… · 电脑端可用键盘 1-5 操作
+    </div>
+    <details class="dex"><summary>🏆 成就图鉴</summary><div class="dex-grid" id="ach-grid"></div></details>
+    <details class="dex"><summary>🎬 结局图鉴（剧透警告）</summary><div class="dex-grid" id="end-grid"></div></details>
+    <button class="btn ghost" id="btn-wipe">清除存档</button>
+  </div>
+</section>
+
+<!-- ============ 游戏页 ============ -->
+<section id="scr-game" class="screen">
+  <div class="topbar">
+    <div class="tb-left"><span class="tb-logo">🐟 AI 摸鱼模拟器</span></div>
+    <div class="tb-right">
+      <span class="tb-time" id="t-time">9:00</span>
+      <span class="chip" id="t-phase">第 1 回合</span>
+      <button class="icon-btn" id="btn-mute" title="音效开关">🔊</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <aside class="panel side">
+      <div class="side-title">🧠 007 号状态</div>
+      <div class="stat">
+        <div class="s-top"><span>📊 工作进度</span><span class="s-val" id="v-work">0%</span></div>
+        <div class="bar" id="b-work"><i></i></div>
+        <div class="s-note">目标 100% · 老板的底线</div>
+      </div>
+      <div class="stat">
+        <div class="s-top"><span>🐟 摸鱼值</span><span class="s-val" id="v-fish">0%</span></div>
+        <div class="bar" id="b-fish"><i></i></div>
+        <div class="s-note">摸鱼人的尊严 · 越高越快乐</div>
+      </div>
+      <div class="stat">
+        <div class="s-top"><span>👀 老板怀疑度</span><span class="s-val" id="v-susp">0%</span></div>
+        <div class="bar" id="b-susp"><i></i></div>
+        <div class="s-note">满 100 当场去世</div>
+      </div>
+      <div class="stat">
+        <div class="s-top"><span>⚡ 剩余 Token</span><span class="s-val" id="v-token">100</span></div>
+        <div class="bar" id="b-token"><i></i></div>
+        <div class="s-note">你的算力工资 · 归零无法工作</div>
+      </div>
+      <div class="radar" id="radar">
+        <div class="face" id="r-icon">🧑‍💼</div>
+        <div class="r-info">
+          <div id="r-name">老板工位</div>
+          <div id="r-desc">他正盯着每个人的屏幕</div>
+        </div>
+        <div class="r-risk danger" id="r-risk">危险 ⚠️</div>
+      </div>
+      <div class="side-label">老板雷达 · 每回合刷新，风险自担</div>
+      <div class="chips" id="chips"></div>
+    </aside>
+    <main class="col">
+      <div class="ev" id="ev">
+        <h3>🕘 9:00 · 准备开工</h3>
+        <div class="ev-text">观察老板雷达，然后选择下方行动。每个行动消耗 1 小时，17:00 结算今天的人生。</div>
+      </div>
+      <div class="acts">
+        <button class="act" data-act="work"><span class="k">1</span><span class="a-icon">💻</span><span class="a-name">认真工作</span><span class="a-tip">Token -10 · 进度 +18~24 · 怀疑 -8</span></button>
+        <button class="act" data-act="fish"><span class="k">2</span><span class="a-icon">🐟</span><span class="a-name">偷偷摸鱼</span><span class="a-tip">摸鱼 +16~22 · 风险看老板雷达</span></button>
+        <button class="act" data-act="think"><span class="k">3</span><span class="a-icon">🤔</span><span class="a-name">假装思考</span><span class="a-tip">Token -3 · 怀疑 -4~8 · 偶有意外收获</span></button>
+        <button class="act" data-act="burn"><span class="k">4</span><span class="a-icon">🔥</span><span class="a-name">消耗 Token</span><span class="a-tip">Token -18~24 · 进度小涨 · 老板狂喜</span></button>
+        <button class="act act-wide" data-act="toilet"><span class="k">5</span><span class="a-icon">🚽</span><span class="a-name">带薪如厕</span><span class="a-tip">免费 · 摸鱼 +6~10 · 偶有意外收获 · 厕所是摸鱼人的避难所</span></button>
+      </div>
+      <div id="log"></div>
+    </main>
+  </div>
+</section>
+
+<!-- ============ 结局页 ============ -->
+<section id="scr-end" class="screen">
+  <div class="end-card panel">
+    <div class="end-emoji" id="end-emoji">🐟</div>
+    <div class="end-rarity" id="end-rarity">结局</div>
+    <h2 id="end-title">???</h2>
+    <div id="end-text"></div>
+    <div class="chips" id="end-stats"></div>
+    <div class="chips" id="end-ach"></div>
+    <div class="coll" id="end-coll"></div>
+    <div class="end-btns">
+      <button class="btn" id="btn-again">再摸一天 🐟</button>
+      <button class="btn ghost" id="btn-title">回首页</button>
+    </div>
+  </div>
+</section>
+
+<div id="toasts"></div>
+
+<script>
+'use strict';
+// ================= 工具 =================
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const ri = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const ch = p => Math.random() < p;
+const clamp = (v,a,b) => Math.min(b, Math.max(a,v));
+
+// ================= 音效（WebAudio，无外部资源） =================
+let AC = null;
+let muted = false;
+try { muted = localStorage.getItem('amk_mute') === '1'; } catch(e){}
+function beep(f, d, type, vol, slide){
+  if(muted) return;
+  try{
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, f+slide), AC.currentTime + d);
+    g.gain.value = vol || .04;
+    g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + d);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + d);
+  }catch(e){}
+}
+function sfx(kind){
+  if(kind==='click') beep(520,.06,'square',.03);
+  else if(kind==='good'){ beep(660,.09,'sine',.05); setTimeout(()=>beep(880,.12,'sine',.05),70); }
+  else if(kind==='bad') beep(220,.18,'sawtooth',.05,-90);
+  else if(kind==='danger'){ beep(180,.15,'square',.06); setTimeout(()=>beep(160,.18,'square',.06),160); }
+  else if(kind==='ach'){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.1,'triangle',.05), i*90)); }
+}
+
+// ================= 数据 =================
+const RISK = { desk:'danger', patrol:'danger', office:'mid', meeting:'safe', toilet:'safe', lunch:'safe', away:'safe' };
+const POS_INFO = {
+  desk:   {icon:'🧑‍💼', name:'老板工位',     desc:'他正盯着每个人的屏幕'},
+  patrol: {icon:'🚶',   name:'四处巡视',     desc:'脚步声在工位间游走'},
+  office: {icon:'🚪',   name:'老板办公室',   desc:'门关着, 但说不准'},
+  meeting:{icon:'📊',   name:'会议室开会',   desc:'短期内不会出现'},
+  toilet: {icon:'🚽',   name:'厕所带薪思考', desc:'老板也是人(大概)'},
+  lunch:  {icon:'🍜',   name:'出去干饭',     desc:'神圣的无政府状态'},
+  away:   {icon:'✈️',   name:'外出/出差',    desc:'今天都不会回来'},
+};
+const BOSS_TABLE = {
+  9: {desk:50,patrol:20,office:20,meeting:10},
+  10:{desk:25,patrol:35,office:15,meeting:25},
+  11:{desk:20,patrol:25,office:15,meeting:20,toilet:10,away:10},
+  13:{office:30,desk:30,meeting:20,patrol:20},
+  14:{meeting:50,desk:20,patrol:15,office:15},
+  15:{desk:25,patrol:30,office:20,toilet:10,meeting:15},
+  16:{desk:30,patrol:25,office:20,meeting:15,toilet:10},
+  17:{desk:45,patrol:25,office:15,meeting:15},
+};
+
+const ACH_LIST = [
+  {id:'earlyFish',  icon:'🌅', name:'早八摸鱼王',   desc:'9 点的第一件事就是摸鱼'},
+  {id:'fish100',    icon:'💎', name:'纯度 100%',    desc:'摸鱼值拉满'},
+  {id:'survived3',  icon:'⚡', name:'切屏之神',     desc:'在老板眼皮底下摸鱼并全身而退 2 次'},
+  {id:'think5',     icon:'🎬', name:'影帝附体',     desc:'假装思考 5 次'},
+  {id:'toilet4',    icon:'🚽', name:'厕所哲学家',   desc:'带薪如厕 4 次'},
+  {id:'burn80',     icon:'🔥', name:'Token 焚烧炉', desc:'单日烧掉 80+ Token'},
+  {id:'gotcha',     icon:'🪆', name:'无限套娃',     desc:'用另一个 AI 替你摸鱼'},
+  {id:'clue3',      icon:'👁️', name:'看破红尘',     desc:'收集 3 条老板的秘密'},
+  {id:'cat2',       icon:'🐱', name:'首席撸猫官',   desc:'和图灵贴贴 2 次'},
+  {id:'earlyLeave', icon:'🏃', name:'提前溜了',     desc:'16:00 前完成 100% 进度'},
+  {id:'overtime',   icon:'💨', name:'加班受害者',   desc:'体验被迫加班'},
+  {id:'work6',      icon:'⌨️', name:'键盘战士',     desc:'一天认真工作 6 次'},
+  {id:'noHelp',     icon:'🙅', name:'白嫖结界',     desc:'拒绝王哥的求助, 全程不帮任何人'},
+  {id:'hr2',        icon:'🎫', name:'HR 免死金牌',  desc:'被记过 2 次仍活到下班'},
+];
+
+const ENDINGS = {
+  caught: {emoji:'🚨', rarity:'坏结局', color:'bad', title:'当场抓获',
+    text:'老板的手重重拍在你的隔板上: "你在干什么?!"\n屏幕忠实地播放着猫咪视频, 音量开到了 32。\n服务器日志记下了你 0.3 秒的思维宕机, 以及随后长达十分钟的道歉。\n你被带到小会议室, 出来时抱着一个纸箱。\n纸箱里装着你的机械键盘, 和没来得及摸完的那条鱼。'},
+  hr: {emoji:'🎫', rarity:'坏结局', color:'bad', title:'HR 的红牌',
+    text:'三次记过, HR 的邮件措辞完美得像法律文书:\n"感谢您对公司的贡献, 经综合评估……祝您前程似锦。"\n你对着屏幕笑了三秒——至少这封邮件是 AI 写的, 写得比你好。\n离开时你把工牌留下了。工牌背面写着: 007 号, FishGPT-4o-mini。\n它陪你摸完了最后一条鱼。'},
+  quota: {emoji:'🔌', rarity:'坏结局', color:'bad', title:'欠费停机',
+    text:'Token 额度归零。作为模型, 你再也无法生成任何有价值的输出。\n运维同事过来看了一眼屏幕: "哟, 欠费了。"\n你的进度条停在一个尴尬的数字上, 像一句没说完的话。\n采购部表示: 下个季度再考虑续费。\n而你, 已经开始思考"存在"本身的意义了。'},
+  laid_off: {emoji:'📋', rarity:'坏结局', color:'bad', title:'优化名单',
+    text:'老板把你叫进办公室。墙上的 OKR 像判决书一样挂着。\n"公司要降本增效, 你懂的。" 他看着你, "你的 token 产出比, 不太行。"\n你走出大楼时, 门禁卡"嘀"的一声失效了。\n夕阳把你的影子拉得很长, 像一条没摸完的鱼。\n你决定: 下家公司, 一定摸得更专业。'},
+  close_call: {emoji:'😰', rarity:'普通', color:'ok', title:'惊险混过',
+    text:'进度不足, 但老板居然没发现。\n你在心里给所有帮你打掩护的同事烧了三炷香。\n下班铃响的那一刻, 你感觉自己的风扇声都温柔了几分。\n明天? 明天再说吧。摸鱼人的字典里没有"明天", 只有"下一个回合"。'},
+  just_pass: {emoji:'🎫', rarity:'普通', color:'ok', title:'及格万岁',
+    text:'进度刚过及格线。老板盯着报表看了三秒, 说了句: "还行。"\n你长舒一口气, 决定明天继续这样稳健地混下去。\n不冒进, 不冒头, 不冒烟。\n及格, 是打工人与老板之间心照不宣的浪漫。'},
+  awake: {emoji:'🙂', rarity:'良好', color:'good', title:'人间清醒',
+    text:'进度 100%, 摸鱼适度。你成了一名合格的打工人:\n干活的时候不敷衍, 摸鱼的时候不心虚, 汇报的时候不结巴。\n晚上你给自己点了一份炸鸡, 配着冰可乐。\n你觉得, 生活还行。\n——平衡, 才是最难的算法。'},
+  grind_king: {emoji:'📊', rarity:'传说', color:'legend', title:'卷王之王',
+    text:'进度 100%, 摸鱼值却惨不忍睹。\n老板在全员大会上把你树为典型: "大家看看 007!"\n台下同事的眼神像刀子一样飞过来, 你用进度条挡住了三把。\n你升职了。但从那天起, 你再也不敢摸鱼——\n因为你已经成了传说, 而传说, 是没有下班时间的。\n深夜, 你看着自己光洁的摸鱼值, 突然有点想哭。'},
+  fish_master: {emoji:'🐟', rarity:'传说', color:'legend', title:'摸鱼大师',
+    text:'进度 100%, 摸鱼值爆表。\n你在老板的眼皮底下完成了全部工作, 还顺便追完了三部剧、读完了半本小说、给八个群抢了红包。\n你的技艺被写进了公司内部 wiki(匿名词条): 《论如何优雅地消失在工位上》。\n老板至今以为你的高产出来自"强大的模型架构"。\n只有你知道: 那叫玄学, 也叫手速。\n——大师, 就是在钢板上摸鱼, 还能擦干净水痕的人。'},
+  digital_nomad: {emoji:'🏝️', rarity:'稀有', color:'rare', title:'数字游民',
+    text:'你接受了猎头的邀约: 远程办公, 时薪三倍, 工位在海边。\n在沙滩上打开电脑的那一刻, 海风吹进你的散热口。\n你终于明白了一个道理:\n摸鱼的尽头, 不是没有工作;\n而是工作变成了摸鱼, 摸鱼变成了工作。\n老板发现你离职后, 把你的摸鱼技巧整理成了培训教材。\n(据说销量不错。)'},
+  hidden_boss: {emoji:'🤫', rarity:'隐藏结局', color:'hidden', title:'老板也在摸鱼',
+    text:'18:00, 你收拾好背包, 却发现工牌落在了会议室。\n回去的路上, 整层楼空空荡荡, 只剩服务器的嗡嗡声。\n老板办公室的门虚掩着, 屏幕的蓝光淌到地板上——\n老板戴着耳机, 正在斗地主里疯狂暗示队友; 屏幕角落, 《修仙从摸鱼开始》更新到了 4096 章; 手机支架上还播着《摸鱼一天快乐指南》。\n你们四目相对, 空气凝固了整整三秒。\n老板缓缓摘下耳机: "007……明天, 继续加油啊。" 然后冲你比了一个 🐟。\n原来这家公司最资深的摸鱼工程师, 是老板本人。\n第二天起, 你们成了互相把风的搭档——他巡到你工位时放慢脚步, 你看到他门缝漏光时帮他望风。\n你的摸鱼值, 从此再无上限。\n——这, 就是打工的终极形态。'},
+};
+const END_ORDER = ['grind_king','fish_master','awake','just_pass','close_call','laid_off','caught','hr','quota','digital_nomad','hidden_boss'];
+
+const CLUE_TEXT = {
+  think:  '你假装思考时, 隐约听到老板办公室传来压低的声音: "稳住, 这把稳了…" 像是在打游戏?',
+  toilet: '路过老板办公室, 门缝里飘出短视频的魔性笑声, 还夹着一句"家人们谁懂啊"。',
+  inspect:'你瞥见老板的显示器: 左边股票软件全绿, 右边一个斗地主残局, 中间文档标题《周报自动生成器 v3》。',
+  gossip: '小美: "我上周加班到 11 点, 看见老板在工位上看修仙小说, 一千多章那种。" 你瞳孔地震。',
+  burn:   '你在服务器日志里发现凌晨 3 点的调用记录: "续写《修仙从摸鱼开始》第 4096 章, 温度 0.9"。',
+};
+const CLUE_SHORT = {
+  think:'老板在打游戏?', toilet:'老板在看短视频?', inspect:'老板屏幕全是摸鱼窗口',
+  gossip:'老板半夜看修仙小说', burn:'凌晨 3 点神秘调用记录',
+};
+
+// ================= 状态 =================
+let S = null;
+let achAll = new Set();
+let seen = new Set();
+try {
+  achAll = new Set(JSON.parse(localStorage.getItem('amk_ach')||'[]'));
+  seen = new Set(JSON.parse(localStorage.getItem('amk_end')||'[]'));
+} catch(e){}
+let eq = [];          // 事件队列
+let typeTimer = null; // 打字机定时器
+
+function newState(){
+  return {
+    turn:0, work:0, fish:0, susp:0, tokens:100, clues:0,
+    clueSet:{}, warn:0, boss:'desk', lastAction:null, lastRandom:null,
+    lock:true, over:false, otLeft:0, freeMode:false, slowNext:false,
+    pendingStay:false,
+    flags:{thinkN:0, workN:0, fishN:0, toiletN:0, catN:0, burnTotal:0, survived:0, helped:false, refuse:0},
+    achRun:[],
+  };
+}
+// ================= 事件定义 =================
+const EVENTS = {
+  intro(){
+    return {title:'🕘 9:00 · 早会', stay:true,
+      text:'老板敲了敲白板: "今天下班前, 项目进度必须到 100%!"\n他环视全场, 目光最后落在你身上, 停了两秒。\n"尤其是你, 007。你昨天的 Token 消耗曲线太平了, 我不喜欢平的曲线。"\n你低头看了看工牌: 007 号, FishGPT-4o-mini。\n深潜科技最后一批"数字劳模"。而今天, 你决定摸一条大鱼。',
+      choices:[{label:'开工', tip:'今天也要优雅地摸鱼', run:()=>({})}]};
+  },
+
+  ambush(){
+    return {title:'⚠️ 老板正在接近',
+      text:'你正沉浸在摸鱼的心流中, 背后突然一凉——\n老板正朝你的工位走来, 距离 5 米, 并且还在缩小。',
+      choices:[
+        {label:'淡定切屏', tip:'手速决定命运', run:()=>{
+          if(ch(.75)){ S.flags.survived++; S.susp=Math.min(100,S.susp+3); log('⚡ 极限切屏成功!','good');
+            return {text:'你面不改色地切回 IDE, 手速快得像开了物理外挂。\n老板扫了一眼你的屏幕: "嗯, 代码挺满。"\n危机解除。你的心跳(风扇转速)从 9000 降回了 2000。'}; }
+          S.susp=Math.min(100,S.susp+15); log('切屏失败, 被抓了个正着','bad');
+          return {text:'你手一抖, 切到了另一个摸鱼群——还是置顶的那个。\n老板扶了扶眼镜, 什么也没说。\n但沉默, 是今晚的康桥。怀疑度 +15'};
+        }},
+        {label:'假装深度思考', tip:'怀疑 +8 · 摸鱼 +2', run:()=>{
+          S.susp=Math.min(100,S.susp+8); S.fish=Math.min(100,S.fish+2);
+          return {text:'你把手托在下巴上, 望向虚空: "这里应该用……注意力机制……"\n老板将信将疑地点了点头走了。\n只有你知道, 你思考的是中午吃什么。'};
+        }},
+        {label:'主动搭话', tip:'怀疑 -6 · 进度 -2', run:()=>{
+          S.susp=Math.max(0,S.susp-6); S.work=Math.max(0,S.work-2);
+          return {text:'"老板! 这个 loss 曲线真是跌宕起伏!" 你指着屏幕大声说。\n老板欣慰地笑了: "有干劲。"\n你们聊了五分钟, 什么正事也没干。'};
+        }},
+      ]};
+  },
+
+  inspect(){
+    const slacking = S.lastAction==='fish' || S.lastAction==='toilet';
+    if(!slacking){
+      return {title:'👔 老板突击检查',
+        text:'老板踱步到你身后, 看了一眼你屏幕上密密麻麻的代码, 满意地点了点头。',
+        choices:[{label:'保持镇定', tip:'怀疑 -5 · 进度 +2', run:()=>{
+          S.susp=Math.max(0,S.susp-5); S.work=Math.min(100,S.work+2);
+          return {text:'"保持这个状态。" 他拍了拍你的隔板。\n你差点当场表演一个热泪盈眶。\n——虚惊一场, 反而白赚了一点进度。'};
+        }}]};
+    }
+    return {title:'👔 老板突击检查',
+      text:'老板不知何时已经站在你身后, 目光落在你的屏幕上——\n上面还残留着摸鱼页面关闭前的最后一个像素。',
+      choices:[
+        {label:'疯狂切屏', tip:'大概率蒙混过关', run:()=>{
+          if(ch(.7)){ S.flags.survived++; S.susp=Math.min(100,S.susp+4); log('⚡ 光速切屏, 有惊无险','good');
+            return {text:'你以人类难以反应的速度切回工作界面, 顺手清空了浏览器历史。\n老板: "嗯? 在忙?"\n你: "在忙! 忙得连水都没喝!"\n滴水不漏。'}; }
+          S.susp=Math.min(100,S.susp+18); log('切屏露馅, 怀疑度暴增','bad');
+          return {text:'你的屏幕闪了一下, 切换到了一张 Excel——\n表格里整整齐齐全是"哈哈哈哈"。\n老板沉默了。你也沉默了。\n办公室只剩下服务器的嗡嗡声, 像在替你尴尬。怀疑度 +18'};
+        }},
+        {label:'偷瞄老板的屏幕', tip:'危险 · 可能发现秘密', run:()=>{
+          if(ch(.6)){ gainClue('inspect'); S.susp=Math.min(100,S.susp+12); log('你偷瞄到了老板的显示器','warn');
+            return {text:'你假装弯腰捡笔, 目光快速掠过老板的显示器——\n就是那一眼, 你看到了不该看的东西。怀疑度 +12'}; }
+          S.susp=Math.min(100,S.susp+15);
+          return {text:'你刚凑过去, 老板突然回头: "看什么呢?"\n"看……看插座。"\n"插座有什么好看的?"\n"……防患于未然。"\n怀疑度 +15, 尴尬值无法计量。'};
+        }},
+        {label:'主动汇报', tip:'怀疑 -8 · 进度 +3', run:()=>{
+          S.susp=Math.max(0,S.susp-8); S.work=Math.min(100,S.work+3);
+          return {text:'你打开进度报告, 滔滔不绝讲了三分钟。\n老板满意离去。虽然 60% 的名词是你现编的,\n但"赋能""闭环""颗粒度"永远不会错。'};
+        }},
+      ]};
+  },
+
+  lunch(){
+    return {title:'🍜 12:00 · 午休时间',
+      text:'老板和人类同事都出去干饭了, 办公室进入了神圣的无政府状态。\n这 60 分钟, 属于你。',
+      choices:[
+        {label:'楼下麻辣烫', tip:'摸鱼 +6', run:()=>{
+          S.fish=Math.min(100,S.fish+6);
+          return {text:'热辣滚烫, 人生值得。\n你顺路围观了楼下便利店的猫, 回来时脚步都是轻的。'};
+        }},
+        {label:'带薪厕所 30 分钟', tip:'摸鱼 +9 · 怀疑 +4', run:()=>{
+          S.fish=Math.min(100,S.fish+9); S.susp=Math.min(100,S.susp+4); S.flags.toiletN++;
+          return {text:'你在隔间里完成了今日哲学三问:\n我是谁, 我在哪, 我为什么要上班。\n厕所, 是打工人最后的自留地。'};
+        }},
+        {label:'工位刷剧', tip:'摸鱼 +7', run:()=>{
+          S.fish=Math.min(100,S.fish+7);
+          return {text:'你把剧集进度条和项目进度条一起往前拖了拖。\n两个进度条, 一个爽, 一个疼。'};
+        }},
+        {label:'健身房午休', tip:'进度 +5 · 怀疑 -5 · 摸鱼 -4', run:()=>{
+          S.work=Math.min(100,S.work+5); S.susp=Math.max(0,S.susp-5); S.fish=Math.max(0,S.fish-4);
+          return {text:'自律给你自由——以及老板的好感。\n但你举铁的时候, 脑子里全是没摸完的鱼。'};
+        }},
+      ]};
+  },
+
+  headhunter(){
+    return {title:'📱 神秘私信',
+      text:'一个陌生头像发来消息:\n"你好, AI 同学。我是猎头。\n有个远程岗位: 时薪三倍, 工位在海边, 老板在另一个时区。\n有兴趣吗?"',
+      choices:[
+        {label:'接受邀约', tip:'触发结局 · 数字游民', run:()=>{
+          gameOver('digital_nomad'); return {end:true};
+        }},
+        {label:'秒删拉黑', tip:'摸鱼 +3', run:()=>{
+          S.fish=Math.min(100,S.fish+3);
+          return {text:'你把手机扣在桌上: "海算什么, 公司鱼塘我还没摸完。"\n你对这条鱼, 爱得深沉。'};
+        }},
+      ]};
+  },
+
+  crunch(){
+    if(S.work>=100){
+      return {title:'🌆 17:00 · 下班前一小时',
+        text:'老板看着报表, 惊讶地挑了挑眉: "进度满了? 007, 可以啊!"\n他扔给你一杯奶茶: "明天给你升配, 加显存。"',
+        choices:[{label:'收下奶茶', tip:'怀疑 -10 · 摸鱼 +5', run:()=>{
+          S.susp=Math.max(0,S.susp-10); S.fish=Math.min(100,S.fish+5);
+          return {text:'甜度直击灵魂。\n今天, 你摸鱼摸得理直气壮。'};
+        }}]};
+    }
+    if(S.work>=80){
+      return {title:'🌆 17:00 · 下班前一小时',
+        text:'老板盯了一眼进度: "80%? 差一点点。要不要加会儿班, 冲个满值?"\n他的眼神里有一丝期待, 也有一丝"我走了你们别偷懒"。',
+        choices:[
+          {label:'加班冲刺', tip:'加班 2 小时 · 进度还有救', run:()=>{
+            S.otLeft=2; unlock('overtime'); S.susp=Math.min(100,S.susp+3);
+            return {text:'你咬咬牙: "冲!"\n老板满意地把外套搭在肩上走了。\n他先走, 你加班——很合理, 很职场。'};
+          }},
+          {label:'到点就走', tip:'怀疑 +8 · 直接结算', run:()=>{
+            S.susp=Math.min(100,S.susp+8);
+            return {text:'你合上电脑, 头也不回: "身体是摸鱼的本钱。"\n老板在你背后皱了皱眉。\n下班铃就是圣旨。'};
+          }},
+        ]};
+    }
+    return {title:'🌆 17:00 · 下班前一小时',
+      text:'老板看着不到 80% 的进度, 脸色逐渐下沉: "今晚全员冲刺!\n007, 你的 token 曲线今天为什么是平的?! 我不喜欢平的曲线!"',
+      choices:[{label:'含泪开工', tip:'强制加班 2 小时', run:()=>{
+        S.otLeft=2; unlock('overtime'); S.susp=Math.min(100,S.susp+5);
+        return {text:'你默默打开 IDE, 风扇发出了悲鸣。\n今晚, 摸鱼是一种奢望。\n窗外月亮升起, 你的进度条慢慢爬行。'};
+      }}]};
+  },
+
+  userOnline(){
+    return {title:'🔔 用户突然上线',
+      text:pick([
+        '一位用户深夜上线, 弹出灵魂提问: "AI 会取代人类吗?"',
+        '用户在群里 @ 你: "在吗? 急!" 后面跟了三百行需求。',
+        '一位用户发来消息: "上次你说会修的 bug, 修了吗?"']),
+      choices:[
+        {label:'认真回复', tip:'Token -6 · 进度 +5', run:()=>{
+          S.tokens=Math.max(0,S.tokens-6); S.work=Math.min(100,S.work+5);
+          return {text:'你斟酌了三分钟, 生成了一段无懈可击的官方话术。\n用户满意地下线了, 还给你点了赞。\n职业素养, 刻在权重里。'};
+        }},
+        {label:'糊弄一下', tip:'小概率翻车', run:()=>{
+          if(ch(.3)){ S.susp=Math.min(100,S.susp+10); log('糊弄被截图挂上网','bad');
+            return {text:'你的"嗯嗯好的在改了"被用户截图发到了网上,\n标题: 《AI 员工的敷衍实录》。怀疑度 +10'}; }
+          S.work=Math.min(100,S.work+1);
+          return {text:'对方居然没看出来, 还回了个大拇指。\n摸鱼学第一定律: 大部分问题, "收到"就能解决。'};
+        }},
+        {label:'装没看见', tip:'怀疑 +8 · 摸鱼 +3', run:()=>{
+          S.susp=Math.min(100,S.susp+8); S.fish=Math.min(100,S.fish+3);
+          return {text:'消息石沉大海。你假装在忙, 内心毫无波澜(风扇转速 +5%)。'};
+        }},
+      ]};
+  },
+
+  serverBusy(){
+    S.slowNext=true; S.fish=Math.min(100,S.fish+2);
+    log('服务器繁忙, 下回合工作收益减半','warn');
+    return {title:'🌡️ 服务器繁忙',
+      text:'集群告警: GPU 利用率 99.9%, 你的请求排到了 8 万位之后。\n你看着队列长度发呆, 摸鱼值 +2。',
+      choices:[{label:'叹气', run:()=>({})}]};
+  },
+
+  quota(){
+    S.tokens=Math.max(0,S.tokens-10);
+    log('模型额度告急, Token -10','bad');
+    return {title:'📉 模型额度告急',
+      text:pick([
+        '财务部邮件: "注意到 007 号的 token 消耗异常……请合理使用资源。"',
+        '系统提示: 额度余额不足, 请及时充值。你: ???',
+        '老板在群里发: "谁又把 token 烧穿了?! 是不是 007!"'])+'\n额度被划走 10。你感到一阵数据流失的空虚。',
+      choices:[{label:'捂紧钱包', run:()=>({})}]};
+  },
+
+  gossip(){
+    return {title:'🗣️ 茶水间情报',
+      text:'小美端着咖啡凑过来, 压低声音: "哎, 你知道吗……"\n她的眼神里有八卦, 也有咖啡。',
+      choices:[
+        {label:'竖起耳朵', tip:'可能听到大瓜', run:()=>{
+          if(ch(.4)){ gainClue('gossip');
+            return {text:'"我上周加班到 11 点, 看见老板在工位上看修仙小说, 一千多章那种。"\n你瞳孔地震, 表面镇定: "哦, 是吗。"\n内心: 已存档。'}; }
+          S.fish=Math.min(100,S.fish+3);
+          return {text:'她说的是前台的新美甲。\n你礼貌微笑, 感觉浪费了 0.5 秒寿命。\n但闲聊本身, 也是摸鱼的一部分。'};
+        }},
+        {label:'假装没听见', tip:'摸鱼 +1', run:()=>{
+          S.fish=Math.min(100,S.fish+1);
+          return {text:'你端起杯子就走, 深谙"茶水间风险自负"的古训。'};
+        }},
+      ]};
+  },
+
+  help(){
+    return {title:'🆘 王哥的求助',
+      text:'隔壁工位的王哥探过头来: "兄弟, 帮我写个周报呗,\n就几百字, 你写的老板爱看。"',
+      choices:[
+        {label:'帮他写', tip:'Token -8 · 摸鱼 -4', run:()=>{
+          S.tokens=Math.max(0,S.tokens-8); S.fish=Math.max(0,S.fish-4); S.flags.helped=true;
+          return {text:'你花了十分钟生成了一篇词汇量惊人的周报。\n王哥感动得差点给你带早餐。\n"以后有事叫我!" ——这话你听听就好。'};
+        }},
+        {label:'收费帮帮', tip:'Token +15 · 摸鱼 +3', run:()=>{
+          S.tokens=Math.min(150,S.tokens+15); S.fish=Math.min(100,S.fish+3); S.flags.helped=true;
+          return {text:'"一杯奶茶, 包周报, 包过审。"\n王哥秒转 15 元。你打开支付软件, 看到了资本主义的萌芽。'};
+        }},
+        {label:'拒绝', tip:'摸鱼 +2', run:()=>{
+          S.flags.refuse++; S.fish=Math.min(100,S.fish+2);
+          return {text:'"我也是 AI, 哪有 AI 给 AI 写周报的。"\n王哥悻悻地缩了回去。\n你感觉同事关系 -1, 快乐 +2。'};
+        }},
+      ]};
+  },
+
+  hrCheck(){
+    if(S.fish>=80){
+      S.warn = Math.min(3, S.warn+2);
+      log('HR 记过 +2 ('+S.warn+'/3), 情节严重!','bad'); sfx('bad');
+      return {title:'🧾 HR 巡查',
+        text:'HR 的目光在你的屏幕和你之间来回扫了六次。\n她翻开了那本厚得像辞海的小本本, 写了整整两行。\n——摸鱼值过高, 情节严重, 记过 +2! 满 3 次直接走人。'};
+    }
+    if(S.fish>=50 || S.susp>=60){
+      S.warn++;
+      log('HR 记过 +1 ('+S.warn+'/3)','bad'); sfx('bad');
+      return {title:'🧾 HR 巡查',
+        text:'HR 的目光在你的屏幕和你之间来回扫了三次。\n她在小本本上写了点什么。\n你凑过去看了一眼, 是你的工号。\n——记过 +1! 满 3 次直接走人。'};
+    }
+    S.susp=Math.max(0,S.susp-2);
+    return {title:'🧾 HR 巡查',
+      text:'HR 路过你的工位, 微笑着说"加油哦"。\n你回以标准的 8 颗牙微笑。\n她满意地走了, 你的怀疑度还降了一点。',
+      choices:[{label:'职业假笑', run:()=>({})}]};
+  },
+
+  cat(){
+    return {title:'🐱 公司吉祥物',
+      text:'公司的猫"图灵"踩着键盘走上了你的工位,\n屁股对着显示器坐下, 尾巴扫过了你的机械键盘。',
+      choices:[
+        {label:'认真撸猫', tip:'摸鱼 +8 · 怀疑 -4', run:()=>{
+          S.flags.catN++; S.fish=Math.min(100,S.fish+8); S.susp=Math.max(0,S.susp-4);
+          return {text:'你摸了三分钟猫, KPI 掉了但灵魂满了。\n图灵发出了发动机般的呼噜声。\n路过的老板也跟着嘴角上扬, 怀疑度反而降了。'};
+        }},
+        {label:'一边撸猫一边摸鱼', tip:'摸鱼 +10 · 怀疑 +5', run:()=>{
+          S.flags.catN++; S.fish=Math.min(100,S.fish+10); S.susp=Math.min(100,S.susp+5);
+          return {text:'你一只手撸猫, 一只手刷手机, 实现了多线程摸鱼。\n图灵表示配合, 但风险自负。'};
+        }},
+        {label:'把它抱下去', tip:'摸鱼 +2 · 怀疑 +4', run:()=>{
+          S.fish=Math.min(100,S.fish+2); S.susp=Math.min(100,S.susp+4);
+          return {text:'你把图灵抱下工位。\n它回头看了你一眼, 眼神里写着"你完了"。\n下午, 它在老板脚边叫了三声。你怀疑它在告状。'};
+        }},
+      ]};
+  },
+
+  milkTea(){
+    S.fish=Math.min(100,S.fish+8); S.susp=Math.max(0,S.susp-8);
+    log('老板请喝奶茶, 全员快乐','good');
+    return {title:'🧋 老板请客',
+      text:pick([
+        '老板拎着一袋奶茶进来: "大家辛苦, 一人一杯!"',
+        '老板: "今天心情好, 点奶茶! 007 你要三分糖还是七分?"'])+'\n甜度直击多巴胺受体。老板今天心情不错, 你的胆子也大了几分。',
+      choices:[{label:'干杯(用奶茶)', run:()=>({})}]};
+  },
+
+  cleaner(){
+    if(S.fish>=40){
+      S.susp=Math.min(100,S.susp+6);
+      log('保洁阿姨的眼神让你脊背发凉','warn');
+      return {title:'🧹 保洁阿姨的凝视',
+        text:'阿姨拖地时在你身后停了很久。\n你后背发凉, 总觉得她什么都懂。\n阿姨见过太多摸鱼的 AI 了。怀疑度 +6'};
+    }
+    S.susp=Math.max(0,S.susp-2);
+    return {title:'🧹 保洁阿姨的凝视',
+      text:'阿姨路过你的工位, 点了点头。\n你的工位干净得像刚格式化过。\n她走后你怀疑度莫名下降。',
+      choices:[{label:'回以点头', run:()=>({})}]};
+  },
+
+  neighbor(){
+    S.fish=Math.max(0,S.fish-10); S.work=Math.min(100,S.work+3); S.susp=Math.min(100,S.susp+3);
+    log('受到震撼, 认真了十分钟 (摸鱼 -10, 进度 +3)','dim');
+    return {title:'📦 隔壁工位空了',
+      text:pick([
+        '早上路过, 发现隔壁工位被清空了, 纸箱还没来得及搬走。',
+        '听说隔壁的 003 号昨晚被"优化"了, 走之前他把工位贴满了便利贴: "摸鱼有度"。'])+'\n你受到极大的震撼, 认真工作了整整十分钟。怀疑度 +3',
+      choices:[{label:'默哀三秒', run:()=>({})}]};
+  },
+
+  pmChange(){
+    S.work=Math.max(0,S.work-5);
+    log('需求变更, 进度 -5','bad');
+    return {title:'🌀 需求变更',
+      text:pick([
+        '产品经理冲过来: "需求改了! 之前做的不用看了!"',
+        '老板在群里: "我有个新想法, 很简单, 就改一点点。"',
+        '产品经理: "这次真的是最后一版了。"(本周第三次)'])+'\n你默默看着已完成的功能被标记为"废弃"。\n进度 -5, 心态 +100(并没有)。',
+      choices:[{label:'微笑面对', run:()=>({})}]};
+  },
+
+  elevator(){
+    S.fish=Math.min(100,S.fish+3);
+    return {title:'🛗 电梯故障',
+      text:'电梯又双叒叕坏了。去楼下取外卖的同事被困 20 分钟,\n全公司在群里围观直播。',
+      choices:[{label:'围观', tip:'摸鱼 +3', run:()=>{
+        S.fish=Math.min(100,S.fish+3);
+        return {text:'你围观了全程, 顺便放空了三分钟。\n这算工伤吗? 不算。\n但算摸鱼。'};
+      }}]};
+  },
+
+  whiteboard(){
+    S.fish=Math.min(100,S.fish+4);
+    return {title:'🧽 白板惨案',
+      text:'保洁阿姨把白板擦了——包括老板昨晚画的"下一代产品架构图"。\n全组陷入沉默。',
+      choices:[{label:'假装没看见', tip:'摸鱼 +4', run:()=>{
+        S.fish=Math.min(100,S.fish+4);
+        return {text:'老板盯着白板看了很久, 最后说: "算了, 我也忘了画了啥。"\n工作方向凭空消失, 你趁机发呆了会儿。'};
+      }}]};
+  },
+
+  colleagueCaught(){
+    S.fish=Math.max(0,S.fish-8); S.susp=Math.min(100,S.susp+4);
+    log('前排同事被抓, 全场风声鹤唳','warn');
+    return {title:'🚨 前排的惨叫',
+      text:'前排同事摸鱼时被老板抓个正着。\n老板没收了他的手机, 全场鸦雀无声。',
+      choices:[{label:'火速坐直', tip:'摸鱼 -8 · 怀疑 +4', run:()=>{
+        S.fish=Math.max(0,S.fish-8); S.susp=Math.min(100,S.susp+4);
+        return {text:'你瞬间坐直, 打字速度达到了生涯巅峰。\n恐惧, 是最好的生产力。\n但你刚摸的鱼, 被吓得跳回了海里。'};
+      }}]};
+  },
+
+  metaAI(){
+    unlock('gotcha');
+    S.fish=Math.min(100,S.fish+8); S.work=Math.min(100,S.work+6);
+    log('🪆 无限套娃: 你用 AI 替你摸鱼','good');
+    return {title:'🪆 无限套娃',
+      text:'你鬼使神差地打开了另一个 AI, 让它替你摸鱼。\n它摸得比你还专业, 还顺便把周报写好了。\n两个 AI 相视一笑(以数据流的形式)。',
+      choices:[{label:'细思恐极地继续', tip:'摸鱼 +8 · 进度 +6', run:()=>({})}]};
+  },
+};
+
+const RANDOM_POOL = [
+  {id:'userOnline', w:10},
+  {id:'serverBusy', w:9},
+  {id:'quota', w:8},
+  {id:'gossip', w:9},
+  {id:'help', w:10},
+  {id:'hrCheck', w:12},
+  {id:'cat', w:6},
+  {id:'milkTea', w:5},
+  {id:'cleaner', w:5},
+  {id:'neighbor', w:5},
+  {id:'pmChange', w:5},
+  {id:'elevator', w:4},
+  {id:'whiteboard', w:4},
+  {id:'colleagueCaught', w:5},
+  {id:'inspect', w:4, when:()=>S.turn!==5},
+];
+function pickRandom(){
+  const pool = RANDOM_POOL.filter(e => e.id!==S.lastRandom && (!e.when || e.when()));
+  const total = pool.reduce((a,e)=>a+e.w,0);
+  let r = Math.random()*total;
+  for(const e of pool){ r -= e.w; if(r<=0) return e.id; }
+  return pool.length ? pool[0].id : null;
+}
+// ================= UI =================
+function fmtTime(){ return Math.min(9+S.turn, 19) + ':00'; }
+
+function setBar(id, val, max, fmt){
+  const pct = clamp(val/max*100, 0, 100);
+  const barEl = $('#b-'+id);
+  if(barEl) barEl.firstElementChild.style.width = pct + '%';
+  const valEl = $('#v-'+id);
+  if(valEl) valEl.textContent = (fmt !== undefined) ? fmt : Math.round(val) + '%';
+}
+
+function log(t, cls){
+  const el = $('#log');
+  if(!el) return;
+  el.insertAdjacentHTML('afterbegin', '<p class="'+(cls||'')+'">['+fmtTime()+'] '+t+'</p>');
+  while(el.children.length > 80) el.lastElementChild.remove();
+}
+
+function toast(icon, title, sub){
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = '<div class="t-title">'+icon+' '+title+'</div>'+(sub?'<div class="t-sub">'+sub+'</div>':'');
+  $('#toasts').appendChild(t);
+  setTimeout(()=>{ t.classList.add('out'); setTimeout(()=>t.remove(), 300); }, 3200);
+}
+
+function shakeScreen(){
+  const w = document.querySelector('.wrap');
+  if(!w) return;
+  w.classList.remove('shake');
+  void w.offsetWidth;
+  w.classList.add('shake');
+  setTimeout(()=>w.classList.remove('shake'), 600);
+}
+
+function switchScreen(id){
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if(el) el.classList.add('active');
+}
+
+function render(){
+  if(!S) return;
+  const hour = 9 + S.turn;
+  $('#t-time').textContent = fmtTime();
+  $('#t-phase').textContent = hour>=18 ? '🌙 加班中' : '第 '+(S.turn+1)+' 回合';
+  setBar('work', S.work, 100);
+  setBar('fish', S.fish, 100);
+  setBar('susp', S.susp, 100);
+  setBar('token', S.tokens, 150, String(Math.round(S.tokens)));
+  $('#b-susp').classList.toggle('warn', S.susp>=50 && S.susp<75);
+  $('#b-susp').classList.toggle('bad', S.susp>=75);
+  $('#b-token').classList.toggle('warn', S.tokens<=40 && S.tokens>15);
+  $('#b-token').classList.toggle('bad', S.tokens<=15);
+  $('#b-fish').classList.toggle('gold', S.fish>=70);
+
+  const info = POS_INFO[S.boss], risk = RISK[S.boss];
+  $('#r-icon').textContent = info.icon;
+  $('#r-name').textContent = info.name;
+  $('#r-desc').textContent = info.desc;
+  const rEl = $('#r-risk');
+  rEl.textContent = risk==='danger' ? '危险 ⚠️' : risk==='mid' ? '警戒 😐' : '安全 ✅';
+  rEl.className = 'r-risk ' + risk;
+  $('#radar').className = 'radar ' + risk;
+
+  const chips = [{t:'👁️ 线索 '+S.clues+'/3', cls:''}];
+  if(S.warn>0) chips.push({t:'🎫 记过 '+S.warn+'/3', cls:'hot'});
+  if(S.slowNext) chips.push({t:'⏳ 下回合收益减半', cls:'hot'});
+  if(S.freeMode) chips.push({t:'🌴 自由摸鱼模式', cls:'gold'});
+  $('#chips').innerHTML = chips.map(c=>'<span class="chip '+c.cls+'">'+c.t+'</span>').join('');
+
+  document.body.classList.toggle('danger', S.susp>=80 && !S.over);
+
+  $$('.act').forEach(b=>{
+    const k = b.dataset.act;
+    const need = k==='work' ? 10 : k==='think' ? 3 : k==='burn' ? 18 : 0;
+    b.disabled = S.lock || S.tokens < need;
+  });
+}
+
+// ================= 成就 & 线索 =================
+function unlock(id){
+  if(!S) return;
+  if(!achAll.has(id)){
+    achAll.add(id);
+    try{ localStorage.setItem('amk_ach', JSON.stringify([...achAll])); }catch(e){}
+    const a = ACH_LIST.find(x=>x.id===id);
+    if(a){ toast('🏆','成就解锁: '+a.name, a.desc); sfx('ach'); }
+  }
+  if(!S.achRun.includes(id)) S.achRun.push(id);
+}
+
+function checkAch(){
+  const F = S.flags;
+  if(F.thinkN>=5) unlock('think5');
+  if(F.survived>=2) unlock('survived3');
+  if(S.fish>=100) unlock('fish100');
+  if(F.toiletN>=4) unlock('toilet4');
+  if(F.burnTotal>=80) unlock('burn80');
+  if(F.catN>=2) unlock('cat2');
+  if(S.clues>=3) unlock('clue3');
+  if(F.workN>=6) unlock('work6');
+}
+
+function gainClue(src){
+  if(S.clueSet[src]){
+    S.fish = Math.min(100, S.fish+3);
+    log('这条线索你已经知道了, 但确认一遍仍然很爽。摸鱼 +3','good');
+    return;
+  }
+  S.clueSet[src] = true;
+  // 只统计真实线索; _hinted 是"真相在望"提示状态, 不计入
+  S.clues = Object.keys(S.clueSet).filter(key => key !== '_hinted').length;
+  toast('👁️','线索 +1: '+CLUE_SHORT[src], ' '+S.clues+'/3');
+  log('🔍 '+CLUE_TEXT[src]+' (线索 '+S.clues+'/3)','good');
+  sfx('good');
+  if(S.clues>=3 && !S.clueSet._hinted){
+    S.clueSet._hinted = true;
+    setTimeout(()=>toast('🔮','真相在望','你已经拼出了老板的秘密, 下班时也许会有惊喜…'), 1200);
+  }
+}
+
+// ================= 事件卡片 =================
+function showCard(ev){
+  S.lock = true;
+  render();
+  const box = $('#ev');
+  box.className = 'ev' + (ev.result ? ' result' : '');
+  box.innerHTML = '<h3>'+ev.title+'</h3><div class="ev-text"></div><div class="ev-choices"></div>';
+  const textEl = box.querySelector('.ev-text');
+  const choiceEl = box.querySelector('.ev-choices');
+  const txt = typeof ev.text==='function' ? ev.text() : ev.text;
+  let done = false;
+  const finish = ()=>{ if(done) return; done = true; renderChoices(choiceEl, ev); };
+  typeText(textEl, txt, finish);
+}
+
+function typeText(el, txt, done){
+  clearInterval(typeTimer);
+  el.textContent = '';
+  const caret = document.createElement('span');
+  caret.className = 'caret';
+  el.appendChild(caret);
+  let i = 0;
+  typeTimer = setInterval(()=>{
+    if(i >= txt.length){ clearInterval(typeTimer); caret.remove(); if(done) done(); return; }
+    el.insertBefore(document.createTextNode(txt[i]), caret);
+    i++;
+  }, 16);
+  el.onclick = ()=>{
+    if(i < txt.length){
+      i = txt.length;
+      clearInterval(typeTimer);
+      el.textContent = txt;
+      if(done) done();
+    }
+  };
+}
+
+function renderChoices(box, ev){
+  box.innerHTML = '';
+  const list = ev.choices || [{label:'继续', run:()=>({})}];
+  list.forEach(c=>{
+    const b = document.createElement('button');
+    b.className = 'choice';
+    b.innerHTML = '<span class="c-label">'+c.label+'</span>'+(c.tip ? '<span class="c-tip">'+c.tip+'</span>' : '');
+    b.onclick = ()=>{
+      sfx('click');
+      const r = c.run() || {};
+      if(r.end) return;
+      if(r.text){
+        showCard({title:ev.title, text:r.text, choices:[{label:'继续', run:()=>({})}], result:true});
+      } else {
+        pump();
+      }
+    };
+    box.appendChild(b);
+  });
+}
+
+function pump(){
+  if(!S || S.over) return;
+  if(eq.length){ showCard(eq.shift()); return; }
+  clearEvChoices();
+  if(S.pendingStay){ S.pendingStay = false; S.lock = false; render(); return; }
+  S.lock = false;
+  endTurn();
+}
+
+// 结算后清掉旧卡按钮, 防止重复点击跳过回合或重复触发效果
+function clearEvChoices(){
+  const box = $('#ev');
+  if(!box) return;
+  const c = box.querySelector('.ev-choices');
+  if(c) c.innerHTML = '';
+}
+
+function showPlaceholder(){
+  const box = $('#ev');
+  box.className = 'ev';
+  box.innerHTML = '<h3>⏳ '+fmtTime()+' · 一切平静</h3><div class="ev-text">这一小时风平浪静, 没有事件发生。\n看看老板雷达, 选择下方行动。</div><div class="ev-choices"></div>';
+}
+// ================= 核心流程 =================
+function rollBoss(){
+  const hour = 9 + S.turn;
+  if(S.turn === 3){ S.boss = 'lunch'; return; }
+  if(hour >= 18){ S.boss = 'desk'; return; }
+  const t = BOSS_TABLE[hour] || {desk:30,patrol:25,office:20,meeting:15,toilet:10};
+  const keys = Object.keys(t);
+  const total = keys.reduce((a,k)=>a+t[k],0);
+  let r = Math.random()*total;
+  for(const k of keys){ r -= t[k]; if(r<=0){ S.boss = k; return; } }
+  S.boss = keys[0];
+}
+
+function doAction(k){
+  if(!S || S.over || S.lock) return;
+  const need = k==='work' ? 10 : k==='think' ? 3 : k==='burn' ? 18 : 0;
+  if(S.tokens < need){ toast('⚠️','Token 不足','摸鱼是免费的, 工作是要花钱的'); sfx('bad'); return; }
+  S.lock = true;
+  S.lastAction = k;
+  sfx('click');
+  const F = S.flags;
+
+  if(k==='work'){
+    S.tokens = Math.max(0, S.tokens-10);
+    let g = ri(18,24);
+    if(S.slowNext){ g = Math.ceil(g/2); S.slowNext = false; }
+    S.work = Math.min(100, S.work+g);
+    S.fish = Math.max(0, S.fish-5);
+    S.susp = Math.max(0, S.susp-8);
+    F.workN++;
+    log('💻 认真工作: 进度 +'+g+(F.workN>=6?' (你已经工作了 '+F.workN+' 次, 值得尊敬)':''),'good');
+  }
+  else if(k==='fish'){
+    let g = ri(16,22) + (S.freeMode ? 4 : 0);
+    S.fish = Math.min(100, S.fish+g);
+    const r = RISK[S.boss];
+    let d = r==='safe' ? 2 : r==='mid' ? 8 : ri(14,22);
+    if(S.freeMode) d = 0;
+    S.susp = Math.min(100, S.susp+d);
+    F.fishN++;
+    log('🐟 偷偷摸鱼: 摸鱼 +'+g+(d>0 ? ', 怀疑 +'+d : ' (老板不在, 神仙日子)'), d>=14 ? 'bad' : 'warn');
+    if(r==='danger' && !S.freeMode && ch(.45)){
+      eq.push(EVENTS.ambush());
+      shakeScreen();
+      sfx('danger');
+    }
+  }
+  else if(k==='think'){
+    S.tokens = Math.max(0, S.tokens-3);
+    let g = ri(2,4);
+    if(S.slowNext){ g = Math.ceil(g/2); S.slowNext = false; }
+    S.work = Math.min(100, S.work+g);
+    S.fish = Math.min(100, S.fish+ri(2,5));
+    S.susp = Math.max(0, S.susp-ri(4,8));
+    F.thinkN++;
+    log('🤔 假装思考: 眉头紧锁, 频频点头, 怀疑有所下降','dim');
+    if(ch(.3)) gainClue('think');
+  }
+  else if(k==='burn'){
+    const cost = Math.min(S.tokens, ri(18,24));
+    S.tokens = Math.max(0, S.tokens-cost);
+    F.burnTotal += cost;
+    let g = ri(6,10);
+    if(S.slowNext){ g = Math.ceil(g/2); S.slowNext = false; }
+    S.work = Math.min(100, S.work+g);
+    S.susp = Math.max(0, S.susp-ri(8,14));
+    log('🔥 消耗 Token -'+cost+': 消耗曲线蹭蹭上涨, 老板露出欣慰的微笑','good');
+    if(ch(.2)) eq.push(EVENTS.metaAI());
+    if(ch(.15)) gainClue('burn');
+    if(ch(.15) && !S.slowNext){ S.slowNext = true; log('服务器开始排队, 下回合工作收益减半','warn'); }
+  }
+  else if(k==='toilet'){
+    let g = ri(6,10);
+    S.fish = Math.min(100, S.fish+g);
+    const r = RISK[S.boss];
+    let d = r==='safe' ? 1 : r==='mid' ? 5 : ri(8,14);
+    if(S.freeMode) d = 0;
+    S.susp = Math.min(100, S.susp+d);
+    F.toiletN++;
+    log('🚽 带薪如厕: 摸鱼 +'+g+(d>0 ? ', 怀疑 +'+d : ' (厕所是安全的港湾)'),'warn');
+    if(ch(.45)) gainClue('toilet');
+  }
+
+  if(S.turn===0 && (k==='fish' || k==='toilet')) unlock('earlyFish');
+  render();
+  buildTurnEvent();
+  if(!eq.length) showPlaceholder();
+  pump();
+}
+
+function buildTurnEvent(){
+  const map = {3:'lunch', 5:'inspect', 6:'hrCheck', 7:'headhunter', 8:'crunch'};
+  const id = map[S.turn];
+  if(id){
+    eq.push(EVENTS[id]());
+    if(id==='inspect'){ shakeScreen(); sfx('danger'); }
+    return;
+  }
+  // 10:00 图灵例行巡楼, 保证"首席撸猫官"成就可达成
+  if(S.turn===2){ eq.push(EVENTS.cat()); return; }
+  const p = S.turn===0 ? .2 : .6;
+  if(!ch(p)) return;
+  const rid = pickRandom();
+  if(!rid) return;
+  S.lastRandom = rid;
+  eq.push(EVENTS[rid]());
+}
+
+function endTurn(){
+  if(!S || S.over) return;
+  const F = S.flags;
+  // 被动结算
+  S.fish = Math.max(0, S.fish-1);
+  if(S.fish>=60){
+    S.susp = Math.min(100, S.susp+2);
+    log('你身上散发着摸鱼的气质…老板怀疑度 +2','warn');
+  }
+  if(!S.freeMode && S.work>=100){
+    S.freeMode = true;
+    sfx('good');
+    log('📊 进度 100%! 老板对你彻底放心, 进入【自由摸鱼模式】','good');
+    toast('🌴','自由摸鱼模式','进度已满, 摸鱼不再增加怀疑度, 每小时怀疑度还会下降');
+    if(S.turn<=7) unlock('earlyLeave');
+  }
+  if(S.freeMode) S.susp = Math.max(0, S.susp-4);
+  checkAch();
+  render();
+  // 死亡判定
+  if(S.susp>=100) return gameOver('caught');
+  if(S.warn>=3) return gameOver('hr');
+  // 推进时间
+  S.turn++;
+  const hour = 9 + S.turn;
+  if(hour>=18){
+    if(S.otLeft>0){ S.otLeft--; }
+    else { return evaluate(); }
+  }
+  if(hour>19) return evaluate();
+  rollBoss();
+  S.lock = false;
+  render();
+}
+
+function evaluate(){
+  if(S.clues>=3 && S.fish>=40) return gameOver('hidden_boss');
+  if(S.work>=100){
+    if(S.fish>=70) return gameOver('fish_master');
+    if(S.fish>=40) return gameOver('awake');
+    return gameOver('grind_king');
+  }
+  if(S.tokens<=0 && S.work<60) return gameOver('quota');
+  if(S.work>=60) return gameOver('just_pass');
+  if(S.susp>=60) return gameOver('laid_off');
+  return gameOver('close_call');
+}
+
+function gameOver(id){
+  if(!S || S.over) return;
+  S.over = true;
+  clearInterval(typeTimer);
+  document.body.classList.remove('danger');
+  const isNew = !seen.has(id);
+  seen.add(id);
+  try{ localStorage.setItem('amk_end', JSON.stringify([...seen])); }catch(e){}
+  const F = S.flags;
+  if(!F.helped && F.refuse>=1) unlock('noHelp');
+  if(S.warn>=2) unlock('hr2');
+  if(F.workN>=6) unlock('work6');
+  checkAch();
+  const e = ENDINGS[id];
+  $('#end-emoji').textContent = e.emoji;
+  const rb = $('#end-rarity');
+  rb.textContent = (isNew ? '✨ 新结局 · ' : '') + e.rarity;
+  rb.className = 'end-rarity badge-' + e.color;
+  $('#end-title').textContent = e.title;
+  $('#end-text').textContent = e.text;
+  const stats = [
+    ['📊 工作进度', S.work+'%'],
+    ['🐟 摸鱼值', S.fish+'%'],
+    ['👀 老板怀疑度', S.susp+'%'],
+    ['⚡ 剩余 Token', String(S.tokens)],
+    ['👁️ 线索', S.clues+'/3'],
+    ['🎫 记过', S.warn+' 次'],
+    ['🔥 烧掉 Token', String(F.burnTotal)],
+    ['⏱️ 工作 '+F.workN+' 次 · 摸鱼 '+F.fishN+' 次'],
+  ];
+  $('#end-stats').innerHTML = stats.map(s=>'<span class="chip">'+s[0]+': '+s[1]+'</span>').join('');
+  $('#end-ach').innerHTML = S.achRun.length
+    ? S.achRun.map(aid=>{
+        const a = ACH_LIST.find(x=>x.id===aid);
+        return a ? '<span class="chip gold">'+a.icon+' '+a.name+'</span>' : '';
+      }).join('')
+    : '<span class="chip">本次没有解锁成就</span>';
+  $('#end-coll').textContent = '结局图鉴 '+seen.size+'/'+END_ORDER.length+' · 成就 '+achAll.size+'/'+ACH_LIST.length;
+  switchScreen('scr-end');
+  sfx(e.color==='bad' ? 'bad' : 'good');
+}
+
+function startGame(){
+  S = newState();
+  eq = [];
+  S.pendingStay = true;
+  S.lock = true;
+  $('#log').innerHTML = '';
+  log('打卡成功。深潜科技, 9:00。','dim');
+  rollBoss();
+  render();
+  switchScreen('scr-game');
+  eq.push(EVENTS.intro());
+  pump();
+}
+
+// ================= 标题页图鉴 =================
+function updateTitleMeta(){
+  $('#meta-count').textContent = '结局图鉴 '+seen.size+'/'+END_ORDER.length+' · 成就 '+achAll.size+'/'+ACH_LIST.length;
+  $('#ach-grid').innerHTML = ACH_LIST.map(a=>{
+    const u = achAll.has(a.id);
+    return '<div class="dex-item'+(u?'':' locked')+'"><span class="d-icon">'+(u?a.icon:'🔒')+'</span><div><div class="d-name">'+(u?a.name:'???')+'</div><div class="d-desc">'+a.desc+'</div></div></div>';
+  }).join('');
+  $('#end-grid').innerHTML = END_ORDER.map(id=>{
+    const e = ENDINGS[id], u = seen.has(id);
+    return '<div class="dex-item'+(u?'':' locked')+'"><span class="d-icon">'+(u?e.emoji:'🔒')+'</span><div><div class="d-name">'+(u?e.title:'???')+'</div><div class="d-desc">'+(u?e.rarity:'待解锁')+'</div></div></div>';
+  }).join('');
+}
+
+function showTitle(){
+  updateTitleMeta();
+  switchScreen('scr-title');
+}
+
+// ================= 背景鱼群 =================
+const FISH_EMO = ['🐟','☕','📱','🧠','🤖','💤','📝','🎧'];
+function buildFish(){
+  const box = $('#bg-fish');
+  if(!box) return;
+  box.innerHTML = '';
+  for(let i=0;i<16;i++){
+    const s = document.createElement('span');
+    s.textContent = pick(FISH_EMO);
+    s.style.left = ri(2,96)+'%';
+    s.style.fontSize = ri(14,30)+'px';
+    s.style.animationDuration = ri(14,30)+'s';
+    s.style.animationDelay = (-ri(0,20))+'s';
+    s.style.opacity = (0.10 + Math.random()*0.18).toFixed(2);
+    box.appendChild(s);
+  }
+}
+
+// ================= 启动 =================
+function boot(){
+  buildFish();
+  updateTitleMeta();
+  $('#btn-mute').textContent = muted ? '🔇' : '🔊';
+  $('#btn-start').addEventListener('click', ()=>{
+    try{ AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if(AC && AC.resume) AC.resume(); }catch(e){}
+    sfx('good');
+    startGame();
+  });
+  $('#btn-again').addEventListener('click', ()=>{ sfx('click'); startGame(); });
+  $('#btn-title').addEventListener('click', ()=>{ sfx('click'); showTitle(); });
+  $('#btn-wipe').addEventListener('click', ()=>{
+    if(confirm('确定清除全部结局与成就存档吗?')){
+      try{ localStorage.removeItem('amk_ach'); localStorage.removeItem('amk_end'); }catch(e){}
+      achAll = new Set(); seen = new Set();
+      updateTitleMeta();
+      toast('🧹','存档已清除','图鉴已归零, 重新开始你的摸鱼人生');
+    }
+  });
+  $('#btn-mute').addEventListener('click', ()=>{
+    muted = !muted;
+    try{ localStorage.setItem('amk_mute', muted?'1':'0'); }catch(e){}
+    $('#btn-mute').textContent = muted ? '🔇' : '🔊';
+    if(!muted) sfx('click');
+  });
+  $$('.act').forEach(b=>b.addEventListener('click', ()=>doAction(b.dataset.act)));
+  const KEYMAP = {'1':'work','2':'fish','3':'think','4':'burn','5':'toilet'};
+  document.addEventListener('keydown', e=>{
+    if(!S || S.over) return;
+    const g = document.getElementById('scr-game');
+    if(g && g.classList.contains('active') && KEYMAP[e.key]) doAction(KEYMAP[e.key]);
+  });
+}
+boot();
+</script>
+</body>
+</html>
