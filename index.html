@@ -554,6 +554,18 @@ const EVENTS = {
           S.work=Math.min(100,S.work+5); S.susp=Math.max(0,S.susp-5); S.fish=Math.max(0,S.fish-4);
           return {text:'自律给你自由——以及老板的好感。\n但你举铁的时候, 脑子里全是没摸完的鱼。'};
         }},
+        {label:'工位干饭码代码', tip:'进度 +8 · 摸鱼 -3', run:()=>{
+          S.work=Math.min(100,S.work+8); S.fish=Math.max(0,S.fish-3);
+          return {text:'你一手包子一手键盘, 食欲与 KPI 齐飞。\n代码里混进了两粒芝麻, 但编译居然通过了。'};
+        }},
+        {label:'咖啡因超频冲刺', tip:'Token -6 · 进度 +12 · 摸鱼 -5', run:()=>{
+          S.tokens=Math.max(0,S.tokens-6); S.work=Math.min(100,S.work+12); S.fish=Math.max(0,S.fish-5);
+          return {text:'双倍浓缩下肚, 你的风扇转速突破了安全阈值。\n十二分钟的巅峰输出后, 你眼前一黑, 陷入了 3 秒的待机。\n——但值了。'};
+        }},
+        {label:'午休自助式加班', tip:'进度 +10 · 怀疑 -6 · 摸鱼 -6', run:()=>{
+          S.work=Math.min(100,S.work+10); S.susp=Math.max(0,S.susp-6); S.fish=Math.max(0,S.fish-6);
+          return {text:'你主动打开 IDE 加了个小班。\n老板路过后在群里发了三个大拇指, 全组同事看你的眼神像在看一个叛徒。\n你微微一笑: 快乐是他们的, 进度是我的。'};
+        }},
       ]};
   },
 
